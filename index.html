@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warden Helper JavaScript</title>
+</head>
+<body>
+  <script>// Преобразование Python кода на JavaScript для использования в CodePen
+
+const penaltyDuration = {
+  "XX1": 5,  // 5 минут
+  "XX2": 10, // 10 минут
+  "XX3": 15, // 15 минут
+  "XX4": 25, // 25 минут
+  "XX5": "Пожизненное заключение",
+  "XX6": "Высшая мера наказания"
+};
+
+const articles = {
+  "11X": ["Оскорбление символов власти", "Сопротивление органам власти", "Забастовка", "", "Неподчинение в ЧС", "Мятеж"],
+  "12X": ["Неуважение к суду", "Сокрытие преступления", "Побег из места заключения", "Неисполнение приговора суда", "Сокрытие крупного преступления", "Побег из места пожизненного заключения"],
+  "13X": ["Пропаганда запрещённых организаций", "", "Саботаж", "", "Членство в преступных группировках", "Крупный саботаж"],
+  "14X": ["Неисполнение особых распоряжений", "Халатность", "", "Грубая халатность", "Самоуправство"],
+  "21X": ["", "Нанесение легких телесных повреждений", "Причинение среднего вреда здоровью", "Причинение тяжкого вреда здоровью", "Причинение смерти", "Уничтожение тела"],
+  "22X": ["Оскорбление, клевета", "", "Дача ложных показаний", "Незаконное ограничение свободы", "", ""],
+  "31X": ["Мелкая кража", "Кража", "Грабеж", "Крупное хищение", "Разбой", "Хищение особо ценного имущества"],
+  "32X": ["Порча имущества", "Порча ценного имущества", "Уничтожение имущества", "Уничтожение ценного имущества", "", "Уничтожение особо ценного имущества"],
+  "41X": ["Хулиганство", "" , "Мошенничество", "", "Крупное мошенничество", "Террористический акт"],
+  "42X": ["Необоснованное посещение технических помещений, космоса", "Проникновение на территорию отдела", "Проникновение в стратегическую точку", "Проникновение в защищенную стратегическую точку", "Незаконная эвакуация с территории комплекса", "Проникновение на территорию объекта NanoTrasen"],
+  "43X": ["Злоупотребление экипировкой, лекарствами", "Незаконное владение опасным инструментом", "Незаконное владение регулируемым снаряжением", "Незаконное владение регулируемыми веществами", "Незаконное владение оружием", "Незаконное владение вражеским снаряжением"]
+};
+
+const modifiers = {
+  "организатор": 10,
+  "преступление против должностного лица": 10,
+  "должностное преступление": 10,
+  "расизм": 10,
+  "рецидив": 5,
+  "преступление, совершенное по неосторожности": -5,
+  "безуспешный добровольный отказ от преступления": -5,
+  "явка с повинной": -5
+};
+
+const sections = {
+  1: {
+    1: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    2: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    3: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    4: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"}
+  },
+  2: {
+    1: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    2: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"}
+  },
+  3: {
+    1: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    2: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"}
+  },
+  4: {
+    1: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    2: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"},
+    3: {1: 5, 2: 10, 3: 15, 4: 25, 5: "пожизненное заключение", 6: "высшая мера"}
+  }
+};
+
+function parseViolation(violationStr) {
+  if (violationStr.length > 3) {
+    return null;
+  }
+  try {
+    const section = parseInt(violationStr[0]);
+    const chapter = parseInt(violationStr[1]);
+    const article = parseInt(violationStr[2]);
+    return { section, chapter, article };
+  } catch (e) {
+    return null;
+  }
+}
+
+function calculatePenalties(violations, selectedModifiers) {
+  let chapterViolations = {};
+  let hasCapitalPunishment = false;
+  let hasLifeSentence = false;
+  let totalModifiers = 0;
+
+  violations.forEach((violationStr) => {
+    const result = parseViolation(violationStr);
+    if (result) {
+      const { section, chapter, article } = result;
+      if (sections[section] && sections[section][chapter] && sections[section][chapter][article]) {
+        const penalty = sections[section][chapter][article];
+        if (penalty === "высшая мера") {
+          hasCapitalPunishment = true;
+        } else if (penalty === "пожизненное заключение") {
+          hasLifeSentence = true;
+        } else {
+          if (!chapterViolations[`${section}-${chapter}`]) {
+            chapterViolations[`${section}-${chapter}`] = [];
+          }
+          chapterViolations[`${section}-${chapter}`].push(penalty);
+        }
+      }
+    }
+  });
+
+  if (hasCapitalPunishment) {
+    return "Высшая мера";
+  }
+  if (hasLifeSentence) {
+    return "Пожизненное заключение";
+  }
+
+  let totalPenalty = 0;
+  Object.values(chapterViolations).forEach((penalties) => {
+    totalPenalty += Math.max(...penalties);
+  });
+
+  selectedModifiers.forEach((modifier) => {
+    if (modifiers[modifier]) {
+      totalModifiers += modifiers[modifier];
+    }
+  });
+
+  totalPenalty += totalModifiers;
+
+  if (totalPenalty < 0) {
+    totalPenalty = 0;
+  }
+
+  if (totalPenalty >= 75) {
+    return "пожизненное заключение";
+  } else {
+    return `${totalPenalty} минут`;
+  }
+}
+
+function draw() {
+  const form = document.createElement('form');
+  const violationsInput = document.createElement('input');
+  violationsInput.type = 'text';
+  violationsInput.placeholder = 'Введите нарушения через пробел или запятую (например: 111 213,315)';
+  form.appendChild(violationsInput);
+
+  const modifiersContainer = document.createElement('div');
+  Object.keys(modifiers).forEach((modifier) => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = modifier;
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(modifier));
+    modifiersContainer.appendChild(label);
+  });
+  form.appendChild(modifiersContainer);
+
+  const resultParagraph = document.createElement('p');
+  resultParagraph.id = 'result';
+  form.appendChild(resultParagraph);
+
+  function updateResult() {
+    const violations = violationsInput.value.replace(/\++/g, ' рецидив ').split(/,| /).map(v => v.trim()).filter(v => v);
+    const selectedModifiers = Array.from(modifiersContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    const recidivCount = (violationsInput.value.match(/\+/g) || []).length;
+    for (let i = 0; i < recidivCount; i++) {
+      selectedModifiers.push("рецидив");
+    }
+    const result = calculatePenalties(violations, selectedModifiers);
+    resultParagraph.textContent = `Результат: ${result}`;
+  }
+
+  violationsInput.addEventListener('input', updateResult);
+  modifiersContainer.addEventListener('change', updateResult);
+
+  document.body.appendChild(form);
+}
+
+draw();</script>
+</body>
+</html>
